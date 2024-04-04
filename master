@@ -1,0 +1,33 @@
+import time
+import board
+import busio
+import digitalio
+import microcontroller
+import random
+
+# Initialize I2C for communication
+i2c = busio.I2C(board.SCL, board.SDA)
+
+# Define the I2C addresses of the slave microcontrollers
+slave_addresses = [0x08, 0x09, 0x0A, 0x0B]
+
+def send_open_signal(slave_address, solenoid_index, open_time):
+    # Send command to slave microcontroller to open the solenoid for specified time
+    command = bytearray([solenoid_index, open_time & 0xFF, open_time >> 8 & 0xFF])
+    i2c.writeto(slave_address, command)
+
+# Main loop
+while True:
+    # Choose random slave microcontrollers to activate
+    num_slaves_to_activate = random.randint(1, len(slave_addresses))
+    slaves_to_activate = random.sample(slave_addresses, num_slaves_to_activate)
+
+    # Get input from the user for solenoid index and open time
+    solenoid_index = int(input("Enter solenoid index (1-4): ")) - 1
+    open_time = int(input("Enter open time (in seconds): "))
+
+    # Send open signal to selected slave microcontrollers
+    for slave_address in slaves_to_activate:
+        send_open_signal(slave_address, solenoid_index, open_time)
+
+    print(f"Solenoid {solenoid_index + 1} opened for {open_time} seconds by slaves: {slaves_to_activate}")
