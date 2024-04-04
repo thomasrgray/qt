@@ -1,0 +1,55 @@
+import time
+import board
+import busio
+import digitalio
+import microcontroller
+import touchio
+import adafruit_sdcard
+import storage
+import os
+
+# Initialize I2C for communication
+i2c = busio.I2C(board.SCL, board.SDA)
+
+# Initialize the SD card
+spi = busio.SPI(board.SCK, board.MOSI, board.MISO)
+cs = digitalio.DigitalInOut(board.D10)
+sdcard = adafruit_sdcard.SDCard(spi, cs)
+vfs = storage.VfsFat(sdcard)
+storage.mount(vfs, "/sd")
+
+# Define the I2C address of this slave microcontroller
+address = 0x08
+
+# Capacitive touch sensor setup
+touch_pad = touchio.TouchIn(board.A0)
+
+def get_open_time_and_solution_name():
+    # Monitor the capacitive touch sensor for input
+    while True:
+        if touch_pad.value:
+            open_time = int(input("Enter open time (in seconds): "))
+            solution_name = input("Enter solution name: ")
+            return open_time, solution_name
+
+def open_solenoid(open_time, solution_name):
+    # Open the solenoid for the specified time
+    solenoid_pin.value = True
+    time.sleep(open_time)
+    solenoid_pin.value = False
+
+    # Save the open time and solution name to a file on the SD card
+    with open("/sd/open_times.txt", "a") as f:
+        f.write(f"Solution: {solution_name}, Open Time: {open_time} seconds\n")
+
+# Main loop
+while True:
+    # Wait for command from master microcontroller
+    command = i2c.readfrom(address, 3)
+    solenoid_index, open_time = command[0], command[1] | (command[2] << 8)
+
+    # Get open time and solution name from capacitive touch sensor
+    open_time, solution_name = get_open_time_and_solution_name()
+
+    # Open the solenoid for the specified time and save the details to SD card
+    open_solenoid(open_time, solution_name)
